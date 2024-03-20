@@ -147,3 +147,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value): 
             raise serializers.ValidationError("Old password is not correct")
         return value
+
+class AccountSerializer(serializers.Serializer):
+    class Meta:
+        model : Agency
+        fields:['Name', 'Adresse', 'email']
