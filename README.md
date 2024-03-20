@@ -1,0 +1,2 @@
+- supprimer le lien du qr code et rajouter le lien exact poyr acceder à la page dans private et common key
+-changer le cors 

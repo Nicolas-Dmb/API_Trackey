@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier
+from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier, AccountSerializer
 from .models import Copropriete, CommonKey, PrivateKey, TrackCommon, TrackPrivate, Agency
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import authentication, exceptions
@@ -181,6 +181,7 @@ class CoproprieteViewset(ModelViewSet):
 
     def get_queryset(self):
         return Copropriete.objects.filter(id_Agency = self.request.user)
+
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -270,12 +271,18 @@ class AgencyUpdateView(generics.UpdateAPIView):
 
 
     def get_object(self):
-        #serializer = AgencySerializer(data=request.data, context={'request': request})
+        serializer = AgencySerializer(data=request.data, context={'request': request})
         return self.request.user
+
 
 class AgencyCreateView(generics.ListCreateAPIView):
     serializer_class = AgencyCreateSerialier
-    queryset=Agency.objects.all()
+
+    def get_queryset(self): 
+        user = self.request.user
+        queryset=Agency.objects.filter(id = user.id)
+        return queryset
+    
     def post(self, request):
         serializer = AgencyCreateSerialier(data=request.data)
         if serializer.is_valid():
@@ -293,7 +300,16 @@ class ChangePasswordView(views.APIView):
             request.user.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getAccount(request):
+    Agency_id = request.GET.get('id')
+    Agency = Agency.objects.filter(id=Agency_id)
+    serializer = AgencySerializer(Agency, many=False)
+    return Response(serializer.data)
 
+#track key update
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getUpdateCommonTracKey(request, key_id):
