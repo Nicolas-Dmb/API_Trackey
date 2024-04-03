@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from API_keys import views
-from API_keys.views import CoproprieteViewset, CommonKeyViewset, PrivateKeyViewset, TrackCommonViewset, TrackPrivateViewset, AgencyUpdateView, AgencyCreateView, ChangePasswordView, getUpdateCommonTracKey, getUpdatePrivateTracKey, getAccount
+from API_keys.views import CoproprieteViewset, CommonKeyViewset, PrivateKeyViewset, TrackCommonViewset, TrackPrivateViewset, AgencyUpdateView, AgencyCreateView, ChangePasswordView, getUpdateCommonTracKey, getUpdatePrivateTracKey, getAccount, SendOTPView, VerifyOTPView
 from rest_framework import routers
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
@@ -41,6 +41,8 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/otp', SendOTPView.as_view(), name='sendtoken_otp' ),
+    path('api/otp/verify', VerifyOTPView.as_view(), name='checktoken_otp' ),
     path('api/user/update', AgencyUpdateView.as_view(), name='udpate_user'),
     path('api/user/create', AgencyCreateView.as_view(), name='create_user'),
     path('api/user/account', views.getAccount, name='get_account'),

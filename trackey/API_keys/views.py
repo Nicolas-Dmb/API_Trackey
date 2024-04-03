@@ -1,13 +1,17 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier, AccountSerializer
+from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier
 from .models import Copropriete, CommonKey, PrivateKey, TrackCommon, TrackPrivate, Agency
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import authentication, exceptions
 from rest_framework import generics, views, status
 from rest_framework.permissions import IsAuthenticated
-from datetime import datetime
-
+from datetime import datetime, timedelta
+from datetime import timedelta
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
+import pyotp
 
 
 
@@ -173,6 +177,17 @@ def getRoutes(request):
     ]
     return Response(routes)
 
+def valid_otp(user):
+    #verifier si otp est actif
+    if user.otp_valid_date is not None : 
+        otp_date = user.otp_valid_date + timedelta(minutes=3)
+        if timezone.now() < otp_date:
+            return True
+        else : 
+            user.otp_valid_date = None
+            user.save
+            return False
+
 
 class CoproprieteViewset(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -264,17 +279,23 @@ class TrackPrivateViewset(ModelViewSet):
         return queryset
 
 #user 
-class AgencyUpdateView(generics.UpdateAPIView): 
+
+class AgencyUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
-    queryset = Agency.objects.all()
     serializer_class = AgencySerializer
+    queryset = Agency.objects.all()
 
-
-    def get_object(self):
-        serializer = AgencySerializer(data=request.data, context={'request': request})
-        return self.request.user
-
-
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        otp_actif = valid_otp(user)
+        if otp_actif == True :
+            serializer = self.get_serializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({"message": "User modify successfully"}, status=status.HTTP_200_OK)
+        else : 
+            return Response({'clé otp necessaire'},status=status.HTTP_408_REQUEST_TIMEOUT)
+    
 class AgencyCreateView(generics.ListCreateAPIView):
     serializer_class = AgencyCreateSerialier
 
@@ -294,20 +315,113 @@ class ChangePasswordView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            request.user.set_password(serializer.validated_data['new_password'])
-            request.user.save()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+        user = request.user
+        otp_actif = valid_otp(user)
+        if otp_actif == True :
+            serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                request.user.set_password(serializer.validated_data['new_password'])
+                request.user.save()
+                return Response(status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else : 
+            return Response({'clé otp necessaire'},status=status.HTTP_408_REQUEST_TIMEOUT)
+
+class SendOTPView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    @staticmethod
+    def get(request):
+        try:
+            user = request.user
+            if user.otp_create is not None : 
+                #ici on évite que la requete s'envoie deux fois 
+                last_send =  user.otp_create + timedelta(seconds=2)
+                if timezone.now() < last_send :
+                    return Response(status=status.HTTP_304_NOT_MODIFIED)
+            # Génération d'une clé secrète OTP
+            secret_key = pyotp.random_base32()
+            otp = pyotp.TOTP(secret_key)
+            token = otp.now()
+
+            # Envoi de l'email avec la clé OTP
+            send_mail(
+                'Votre code OTP',
+                f'Votre code OTP est : {token}',
+                'securite@trackey.fr',
+                [f'{request.user.email}'],
+                fail_silently=False,
+            )
+            # Stockage de la clé OTP dans le modèle utilisateur et de la date de mise à jour
+            user.otp = token
+            user.otp_create = timezone.now()
+            user.save()            
+            # Redirection vers une page où l'utilisateur peut saisir le code OTP
+            return Response(status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'Error':e},status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyOTPView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.otp_create is not None : 
+            # Récupération de la clé OTP soumise par l'utilisateur
+            submitted_otp = request.data.get('otp')
+            if submitted_otp is None or not submitted_otp.isdigit(): 
+                return Response({'error': 'code invalide'}, status=status.HTTP_400_BAD_REQUEST)
+            print(f'otp_user {submitted_otp}')
+            # Récupération de la clé OTP associée à l'utilisateur
+            stored_otp = user.otp
+            valid_otp = user.otp_create + timedelta(minutes=3)
+            print(f'délai de validité: {valid_otp}')
+            print(f'date actuelle: {timezone.now()}')
+            print(f'stored_otp {stored_otp}')
+            # Vérification si les clés OTP correspondent
+            if int(submitted_otp) == int(stored_otp) and timezone.now() < valid_otp:
+                print('Clé OTP valide, autoriser accès')
+                # Clé OTP valide, autoriser l'accès
+                user.email_verif = True
+                user.otp_valid_date = timezone.now()
+                user.otp = None
+                user.otp_create = None
+                user.save() 
+                return Response(status=status.HTTP_200_OK)
+            elif timezone.now() > valid_otp:
+                print('Clé OTP timeout')
+                # Clé OTP timeout :
+                user.otp_valid_date = None
+                user.otp = None
+                user.otp_create = None
+                user.save()            
+                return Response({'error': 'délai écoulé'}, status=status.HTTP_408_REQUEST_TIMEOUT)
+            elif submitted_otp != stored_otp :
+                print('Clé OTP invalide')
+                user.otp_valid_date = None
+                user.save()
+                # Clé OTP invalide : 
+                return Response({'error': 'code invalide'}, status=status.HTTP_400_BAD_REQUEST)
+        else : 
+            return Response({'error': 'délai écoulé'}, status=status.HTTP_408_REQUEST_TIMEOUT)
+
+
+
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getAccount(request):
-    Agency_id = request.GET.get('id')
-    Agency = Agency.objects.filter(id=Agency_id)
-    serializer = AgencySerializer(Agency, many=False)
-    return Response(serializer.data)
+    Agency_id = request.user.id
+    agency = Agency.objects.filter(id=Agency_id).first()
+    if agency:
+        serializer = AgencySerializer(agency, many=False)
+        return Response(serializer.data)
+    else:
+        # Gérer le cas où aucun objet Agency n'est trouvé pour l'ID donné
+        return Response({'error': 'Agency not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
 
 #track key update
 @api_view(['GET'])
@@ -342,7 +456,7 @@ def getUpdateCommonTracKey(request, key_id):
 @permission_classes([IsAuthenticated])
 def getUpdatePrivateTracKey(request, key_id):
     try:
-        key = PrivateKey.objects.filter(id=key_id, id_Agency=request.user.agency).first()
+        key = PrivateKey.objects.filter(id=key_id, id_Agency=request.user.id).first()
         if key is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if key.available: 
@@ -361,3 +475,4 @@ def getUpdatePrivateTracKey(request, key_id):
             return Response(status=status.HTTP_202_ACCEPTED)
     except PrivateKey.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+    

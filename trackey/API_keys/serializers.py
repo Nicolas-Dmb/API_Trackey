@@ -10,7 +10,7 @@ from django.contrib.auth.hashers import make_password
 class CommonKeyListSerializer(ModelSerializer):
     class Meta:
         model = CommonKey
-        fields = ['name','acces','image','qr_code','id_Copro','available','id_Agency','id']
+        fields = ['name','acces','image','qr_code','id_Copro','available','id_Agency','id', 'available']
         validators = [
             UniqueTogetherValidator(
                 queryset =CommonKey.objects.all(),
@@ -28,14 +28,14 @@ class CommonKeyListSerializer(ModelSerializer):
     
     def create(self, validated_data):
         instance = CommonKey.objects.create(**validated_data)
-        instance.qr_code = f'api/TrackP/update/{instance.id}/'
+        instance.qr_code = f'http://localhost:3000/Copropriete/CommonKey/track/{instance.id}/'
         instance.save()
         return instance
 
 class PrivateKeyListSerializer(ModelSerializer):
     class Meta:
         model = PrivateKey
-        fields = ['name','acces','image','qr_code','id_Copro', 'available','id_Agency', 'id']
+        fields = ['name','acces','image','qr_code','id_Copro', 'available','id_Agency', 'id', 'available']
         validators = [
             UniqueTogetherValidator(
                 queryset =PrivateKey.objects.all(),
@@ -53,7 +53,7 @@ class PrivateKeyListSerializer(ModelSerializer):
     
     def create(self, validated_data):
         instance = PrivateKey.objects.create(**validated_data)
-        instance.qr_code = f'api/TrackP/update/{instance.id}/'
+        instance.qr_code = f'http://localhost:3000/Copropriete/PrivateKey/track/{instance.id}/'
         instance.save()
         return instance
 
@@ -85,15 +85,14 @@ class CommonKeySerializer(ModelSerializer):
     trackcommon_set = TrackCommonSerializer(many=True)
     class Meta:
         model = CommonKey
-        fields = ['name','acces','image','qr_code','id_Copro','trackcommon_set','id']
+        fields = ['name','acces','image','qr_code','id_Copro','trackcommon_set','id', 'available']
     
-
 
 class PrivateKeySerializer(ModelSerializer):
     trackprivate_set = TrackPrivateSerializer(many=True)
     class Meta:
         model = PrivateKey
-        fields = ['name','acces','image','qr_code','id_Copro','trackprivate_set','id']
+        fields = ['name','acces','image','qr_code','id_Copro','trackprivate_set','id', 'available']
 
 class CoproprieteSerializer(ModelSerializer):
     commonkey_set = CommonKeySerializer(many=True)
@@ -101,22 +100,14 @@ class CoproprieteSerializer(ModelSerializer):
     class Meta:
         model = Copropriete
         fields = ['Numero','name','adresse','id_Agency','commonkey_set', 'privatekey_set','id']
-    
 
 #Account
 class AgencySerializer(ModelSerializer):
     class Meta: 
         model = Agency
-        fields = ['Name', 'Adresse', 'email', 'password']
+        fields = ['Name', 'Adresse', 'email']
         extra_kwargs = {'password': {'write_only':True}}
 
-        def update(self, instance, validate_data):
-            instance.Name = validate_data.get('Name', instance.Name)
-            instance.Adresse = validate_data.get('Adresse', instance.Adresse)
-            instance.email = validate_data.get('email', instance.email)
-            instance.save()
-            return instance
-        
     
 class AgencyCreateSerialier(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -141,14 +132,16 @@ class AgencyCreateSerialier(serializers.ModelSerializer):
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
 
     def validate_old_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value): 
-            raise serializers.ValidationError("Old password is not correct")
+            raise serializers.ValidationError("Ancien Mot de passe incorrect")
         return value
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("Mauvais MP de confirmation")
+        return attrs
 
-class AccountSerializer(serializers.Serializer):
-    class Meta:
-        model : Agency
-        fields:['Name', 'Adresse', 'email']
+
