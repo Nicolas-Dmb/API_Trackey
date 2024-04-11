@@ -146,4 +146,3 @@ class TrackPrivate(models.Model):
     class Meta: 
         ordering = ['depart']
 
-
