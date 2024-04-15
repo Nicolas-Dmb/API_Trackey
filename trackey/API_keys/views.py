@@ -195,7 +195,7 @@ class CommonKeyViewset(ModelViewSet):
     serializer_class = CommonKeyListSerializer
     detail_serializer_class = CommonKeySerializer
 
-    #Je pense que commonkey en listing pour toutes les copro ca me sert à rien par contre une listclés par copro ca me sert à quelque chose 
+   
     def get_queryset(self):
         id_Copro = self.request.GET.get('id_Copro')
         queryset = CommonKey.objects.filter(id_Agency = self.request.user)
@@ -314,15 +314,15 @@ def getAccount(request):
 @permission_classes([IsAuthenticated])
 def getUpdateCommonTracKey(request, key_id):
     try:
-        key = CommonKey.objects.filter(id=key_id, agency=request.user.agency).first()
+        key = CommonKey.objects.filter(id=key_id, id_Agency=request.user.id).first()
         if key is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        if key.available: 
+        if key.available:
             print('redirigé')
             return Response({'id_key': key.id},status=status.HTTP_307_TEMPORARY_REDIRECT)
         else: 
             tracks = key.trackcommon_set.all()
-            print({tracks})
+            print(f'tracks:{tracks}')
             for track in tracks:
                 print({track.retour})
                 if track.retour is None:
@@ -342,7 +342,7 @@ def getUpdateCommonTracKey(request, key_id):
 @permission_classes([IsAuthenticated])
 def getUpdatePrivateTracKey(request, key_id):
     try:
-        key = PrivateKey.objects.filter(id=key_id, agency=request.user.agency).first()
+        key = PrivateKey.objects.filter(id=key_id, id_Agency=request.user.agency).first()
         if key is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if key.available: 
