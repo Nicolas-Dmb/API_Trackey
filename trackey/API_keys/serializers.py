@@ -10,7 +10,7 @@ from django.contrib.auth.hashers import make_password
 class CommonKeyListSerializer(ModelSerializer):
     class Meta:
         model = CommonKey
-        fields = ['name','acces','image','qr_code','id_Copro','available','id_Agency','id', 'available']
+        fields = ['name','acces','image','qr_code','id_Copro','id_Agency','id', 'available']
         validators = [
             UniqueTogetherValidator(
                 queryset =CommonKey.objects.all(),
@@ -35,7 +35,7 @@ class CommonKeyListSerializer(ModelSerializer):
 class PrivateKeyListSerializer(ModelSerializer):
     class Meta:
         model = PrivateKey
-        fields = ['name','acces','image','qr_code','id_Copro', 'available','id_Agency', 'id', 'available']
+        fields = ['name','acces','image','qr_code','id_Copro','id_Agency', 'id', 'available']
         validators = [
             UniqueTogetherValidator(
                 queryset =PrivateKey.objects.all(),
@@ -103,7 +103,7 @@ class CoproprieteSerializer(ModelSerializer):
 
 #Account
 class AgencySerializer(ModelSerializer):
-    class Meta: 
+    class Meta:
         model = Agency
         fields = ['Name', 'Adresse', 'email']
         extra_kwargs = {'password': {'write_only':True}}
@@ -139,6 +139,16 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value): 
             raise serializers.ValidationError("Ancien Mot de passe incorrect")
         return value
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("Mauvais MP de confirmation")
+        return attrs
+    
+
+class MPOubliePasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
     def validate(self, attrs):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError("Mauvais MP de confirmation")

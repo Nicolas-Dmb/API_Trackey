@@ -30,10 +30,15 @@ class Agency(AbstractBaseUser):
     Adresse = models.CharField(max_length=100)
     id = models.CharField(max_length=200, default=uuid.uuid4, unique=True, primary_key=True)
     email = models.EmailField(max_length=100, unique=True)
+
     email_verif = models.BooleanField(default=False)
+    #OTP
     otp = models.IntegerField(blank=True, null=True)
     otp_create = models.DateTimeField(blank=True, null=True)
     otp_valid_date = models.DateTimeField(blank=True, null=True)
+    #MP oublié
+    token = models.CharField(max_length=200, blank=True, null=True)
+    date_token = models.DateTimeField(blank=True, null=True)
 
     is_staff = models.BooleanField(default=False)
 

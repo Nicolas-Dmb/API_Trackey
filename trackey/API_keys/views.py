@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier
+from .serializers import CoproprieteSerializer, CoproprieteListSerializer, CommonKeySerializer,CommonKeyListSerializer, PrivateKeySerializer,PrivateKeyListSerializer, TrackCommonSerializer, TrackPrivateSerializer, AgencySerializer, ChangePasswordSerializer, AgencyCreateSerialier, MPOubliePasswordSerializer
 from .models import Copropriete, CommonKey, PrivateKey, TrackCommon, TrackPrivate, Agency
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import authentication, exceptions
@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
 import pyotp
-
+from itsdangerous import URLSafeSerializer
 
 
 @api_view(['GET'])
@@ -177,6 +177,7 @@ def getRoutes(request):
     ]
     return Response(routes)
 
+#user 
 def valid_otp(user):
     #verifier si otp est actif
     if user.otp_valid_date is not None : 
@@ -188,98 +189,6 @@ def valid_otp(user):
             user.save
             return False
 
-
-class CoproprieteViewset(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = CoproprieteListSerializer
-    detail_serializer_class = CoproprieteSerializer
-
-    def get_queryset(self):
-        return Copropriete.objects.filter(id_Agency = self.request.user)
-
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return self.detail_serializer_class
-        return super().get_serializer_class()
-
-
-
-class CommonKeyViewset(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = CommonKeyListSerializer
-    detail_serializer_class = CommonKeySerializer
-
-   
-    def get_queryset(self):
-        id_Copro = self.request.GET.get('id_Copro')
-        queryset = CommonKey.objects.filter(id_Agency = self.request.user)
-        if id_Copro is not None: 
-            queryset = queryset.filter(id_Copro=id_Copro)
-        return queryset
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return self.detail_serializer_class
-        return super().get_serializer_class()
-
-class PrivateKeyViewset(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = PrivateKeyListSerializer
-    detail_serializer_class = PrivateKeySerializer
-
-    def get_queryset(self):
-        id_Copro = self.request.GET.get('id_Copro')
-        queryset = PrivateKey.objects.filter(id_Agency = self.request.user)
-        if id_Copro is not None:
-            queryset = queryset.filter(id_Copro=id_Copro)
-        return queryset
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return self.detail_serializer_class
-        return super().get_serializer_class()
-    
-class TrackCommonViewset(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = TrackCommonSerializer
-    
-    def perform_create(self, serializer):
-        instance = serializer.save(id_Agency = self.request.user)
-        instance.disable()
-
-    def perform_update(self, serializer):
-        instance = serializer.save(id_Agency = self.request.user)
-        instance.disable()
-
-    def get_queryset(self):
-        id_key = self.request.GET.get('id_key')
-        queryset = TrackCommon.objects.filter(id_Agency = self.request.user)
-        if id_key is not None:
-            queryset = queryset.filter(id_key=id_key)
-        return queryset
-    
-class TrackPrivateViewset(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = TrackPrivateSerializer
-
-    def perform_create(self, serializer):
-        instance = serializer.save(id_Agency = self.request.user)
-        instance.disable()
-
-    def perform_update(self, serializer):
-        instance = serializer.save(id_Agency = self.request.user)
-        instance.disable()
-
-    def get_queryset(self):
-        id_key = self.request.GET.get('id_key')
-        queryset = TrackPrivate.objects.filter(id_Agency = self.request.user)
-        if id_key is not None: 
-            queryset = queryset.filter(id_key=id_key)
-        return queryset
-
-#user 
-
 class AgencyUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AgencySerializer
@@ -289,6 +198,12 @@ class AgencyUpdateView(generics.UpdateAPIView):
         user = request.user
         otp_actif = valid_otp(user)
         if otp_actif == True :
+            #on supprime la verif de l'email si l'user modifie son mail 
+            New_mail = request.data.get('email')
+            print(New_mail)
+            if New_mail != user.email : 
+                print('new_mail')
+                user.email_verif = False
             serializer = self.get_serializer(request.user, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -404,9 +319,66 @@ class VerifyOTPView(views.APIView):
         else : 
             return Response({'error': 'délai écoulé'}, status=status.HTTP_408_REQUEST_TIMEOUT)
 
+# Mot de passe oublié 
+@api_view(['POST'])
+def sendMPoublie(request):
+    user_email = request.data.get('email')
+    try : 
+        user = Agency.objects.get(email=user_email)
+    except : 
+        return Response({'error': 'Agency not found'}, status=status.HTTP_404_NOT_FOUND)
+    print(user)
+    if user.email_verif == True:
+        secret_key = settings.SECRET_KEY + user.id
+        auth_s = URLSafeSerializer(secret_key, "auth")
+        token = auth_s.dumps({"id":user.id , "name": "MotDePasseOublie"})
+        user.token = token
+        user.date_token = timezone.now()
+        user.save()
+        send_mail(
+                'Bonjour,',
+                'Vous avez fait une demande de réinitialisation de votre mot de passe.'
+                f'Cliquez sur ce lien pour en définir un nouveau : http://localhost:3000/MotdePasseOublie/{token}',
+                'securite@trackey.fr',
+                [f'{user.email}'],
+                fail_silently=False,)
+        return Response(status=status.HTTP_200_OK)
+    else:
+        return Response({'error': 'Email non vérifié'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-
+@api_view(['POST'])
+def changeMPoublie(request):
+    token = request.data.get('token')
+    try : 
+        user = Agency.objects.get(token=token)
+    except :
+        print('Agence introuvable')
+        return Response({'error': 'Agency not found'}, status=status.HTTP_408_REQUEST_TIMEOUT)
+    try:
+        #récupère l'id via la code donné et la validité du code
+        secret_key = settings.SECRET_KEY + user.id
+        auth_s = URLSafeSerializer(secret_key, "auth")
+        data = auth_s.loads(token)
+        token_id = data["id"] 
+        valid_token = user.date_token + timedelta(minutes=5)
+        print(f' {user.id} == {token_id}')
+        # vérifie l'id est bon et que le lien est toujours valide 
+        if user.id == token_id and timezone.now() < valid_token: 
+            #envoie et serializer et si données valide on enregistre
+            serializer = MPOubliePasswordSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                user.set_password(serializer.validated_data['new_password'])
+                user.save()
+                return Response(status=status.HTTP_200_OK)
+            return Response({'error':'Mauvais MP de confirmation'}, status=status.HTTP_400_BAD_REQUEST)
+        user.token = None
+        user.save()
+        return Response({'error': 'token invalide'}, status=status.HTTP_408_REQUEST_TIMEOUT)
+    except:
+        user.token = None
+        user.save()
+        return Response({'error': 'token invalide'}, status=status.HTTP_408_REQUEST_TIMEOUT)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -421,7 +393,96 @@ def getAccount(request):
         return Response({'error': 'Agency not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+# Autres endpoints
 
+class CoproprieteViewset(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CoproprieteListSerializer
+    detail_serializer_class = CoproprieteSerializer
+
+    def get_queryset(self):
+        return Copropriete.objects.filter(id_Agency = self.request.user)
+
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return self.detail_serializer_class
+        return super().get_serializer_class()
+
+
+
+class CommonKeyViewset(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommonKeyListSerializer
+    detail_serializer_class = CommonKeySerializer
+
+   
+    def get_queryset(self):
+        id_Copro = self.request.GET.get('id_Copro')
+        queryset = CommonKey.objects.filter(id_Agency = self.request.user)
+        if id_Copro is not None: 
+            queryset = queryset.filter(id_Copro=id_Copro)
+        return queryset
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return self.detail_serializer_class
+        return super().get_serializer_class()
+
+class PrivateKeyViewset(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PrivateKeyListSerializer
+    detail_serializer_class = PrivateKeySerializer
+
+    def get_queryset(self):
+        id_Copro = self.request.GET.get('id_Copro')
+        queryset = PrivateKey.objects.filter(id_Agency = self.request.user)
+        if id_Copro is not None:
+            queryset = queryset.filter(id_Copro=id_Copro)
+        return queryset
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return self.detail_serializer_class
+        return super().get_serializer_class()
+    
+class TrackCommonViewset(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TrackCommonSerializer
+    
+    def perform_create(self, serializer):
+        instance = serializer.save(id_Agency = self.request.user)
+        instance.disable()
+
+    def perform_update(self, serializer):
+        instance = serializer.save(id_Agency = self.request.user)
+        instance.disable()
+
+    def get_queryset(self):
+        id_key = self.request.GET.get('id_key')
+        queryset = TrackCommon.objects.filter(id_Agency = self.request.user)
+        if id_key is not None:
+            queryset = queryset.filter(id_key=id_key)
+        return queryset
+    
+class TrackPrivateViewset(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TrackPrivateSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(id_Agency = self.request.user)
+        instance.disable()
+
+    def perform_update(self, serializer):
+        instance = serializer.save(id_Agency = self.request.user)
+        instance.disable()
+
+    def get_queryset(self):
+        id_key = self.request.GET.get('id_key')
+        queryset = TrackPrivate.objects.filter(id_Agency = self.request.user)
+        if id_key is not None: 
+            queryset = queryset.filter(id_key=id_key)
+        return queryset
 
 #track key update
 @api_view(['GET'])
