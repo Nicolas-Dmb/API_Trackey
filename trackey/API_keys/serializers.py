@@ -105,7 +105,7 @@ class CoproprieteSerializer(ModelSerializer):
 class AgencySerializer(ModelSerializer):
     class Meta:
         model = Agency
-        fields = ['Name', 'Adresse', 'email']
+        fields = ['Name', 'Adresse', 'email', 'email_verif']
         extra_kwargs = {'password': {'write_only':True}}
 
     
