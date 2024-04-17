@@ -218,7 +218,7 @@ class AgencyCreateView(generics.ListCreateAPIView):
         user = self.request.user
         queryset=Agency.objects.filter(id = user.id)
         return queryset
-    
+
     def post(self, request):
         serializer = AgencyCreateSerialier(data=request.data)
         if serializer.is_valid():
@@ -241,6 +241,21 @@ class ChangePasswordView(views.APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else : 
             return Response({'clé otp necessaire'},status=status.HTTP_408_REQUEST_TIMEOUT)
+        
+class DeleteAccountView(views.APIView):
+    permission_classes=[IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+            print('je suis en début destroy')
+            user = request.user
+            otp_actif = valid_otp(user)
+            if user : 
+                if otp_actif:
+                    print("je suis arrivé jusqu'ici")
+                    user.delete()
+                    return Response(status=status.HTTP_204_NO_CONTENT)
+                return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class SendOTPView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -408,6 +423,16 @@ class CoproprieteViewset(ModelViewSet):
         if self.action == 'retrieve':
             return self.detail_serializer_class
         return super().get_serializer_class()
+    
+    def destroy(self, request, *args, **kwargs):
+            instance = self.get_object()
+            otp_actif = valid_otp(request.user)
+            if otp_actif:
+                self.perform_destroy(instance)
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+
 
 
 
@@ -428,6 +453,15 @@ class CommonKeyViewset(ModelViewSet):
         if self.action == 'retrieve':
             return self.detail_serializer_class
         return super().get_serializer_class()
+    
+    def destroy(self, request, *args, **kwargs):
+            instance = self.get_object()
+            otp_actif = valid_otp(request.user)
+            if otp_actif:
+                self.perform_destroy(instance)
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
 
 class PrivateKeyViewset(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -445,6 +479,15 @@ class PrivateKeyViewset(ModelViewSet):
         if self.action == 'retrieve':
             return self.detail_serializer_class
         return super().get_serializer_class()
+    
+    def destroy(self, request, *args, **kwargs):
+            instance = self.get_object()
+            otp_actif = valid_otp(request.user)
+            if otp_actif:
+                self.perform_destroy(instance)
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
     
 class TrackCommonViewset(ModelViewSet):
     permission_classes = [IsAuthenticated]
