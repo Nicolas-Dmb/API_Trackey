@@ -200,10 +200,10 @@ class AgencyUpdateView(generics.UpdateAPIView):
         if otp_actif == True :
             #on supprime la verif de l'email si l'user modifie son mail 
             New_mail = request.data.get('email')
-            print(New_mail)
             if New_mail != user.email : 
-                print('new_mail')
                 user.email_verif = False
+                if Agency.objects.filter(email=New_mail):
+                    return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
             serializer = self.get_serializer(request.user, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -245,13 +245,11 @@ class ChangePasswordView(views.APIView):
 class DeleteAccountView(views.APIView):
     permission_classes=[IsAuthenticated]
 
-    def destroy(self, request, *args, **kwargs):
-            print('je suis en début destroy')
+    def delete(self, request, *args, **kwargs):
             user = request.user
             otp_actif = valid_otp(user)
-            if user : 
+            if user: 
                 if otp_actif:
-                    print("je suis arrivé jusqu'ici")
                     user.delete()
                     return Response(status=status.HTTP_204_NO_CONTENT)
                 return Response(status=status.HTTP_403_FORBIDDEN)
@@ -300,16 +298,11 @@ class VerifyOTPView(views.APIView):
             submitted_otp = request.data.get('otp')
             if submitted_otp is None or not submitted_otp.isdigit(): 
                 return Response({'error': 'code invalide'}, status=status.HTTP_400_BAD_REQUEST)
-            print(f'otp_user {submitted_otp}')
             # Récupération de la clé OTP associée à l'utilisateur
             stored_otp = user.otp
             valid_otp = user.otp_create + timedelta(minutes=3)
-            print(f'délai de validité: {valid_otp}')
-            print(f'date actuelle: {timezone.now()}')
-            print(f'stored_otp {stored_otp}')
             # Vérification si les clés OTP correspondent
             if int(submitted_otp) == int(stored_otp) and timezone.now() < valid_otp:
-                print('Clé OTP valide, autoriser accès')
                 # Clé OTP valide, autoriser l'accès
                 user.email_verif = True
                 user.otp_valid_date = timezone.now()
@@ -318,7 +311,6 @@ class VerifyOTPView(views.APIView):
                 user.save() 
                 return Response(status=status.HTTP_200_OK)
             elif timezone.now() > valid_otp:
-                print('Clé OTP timeout')
                 # Clé OTP timeout :
                 user.otp_valid_date = None
                 user.otp = None
@@ -326,7 +318,6 @@ class VerifyOTPView(views.APIView):
                 user.save()            
                 return Response({'error': 'délai écoulé'}, status=status.HTTP_408_REQUEST_TIMEOUT)
             elif submitted_otp != stored_otp :
-                print('Clé OTP invalide')
                 user.otp_valid_date = None
                 user.save()
                 # Clé OTP invalide : 
@@ -342,7 +333,6 @@ def sendMPoublie(request):
         user = Agency.objects.get(email=user_email)
     except : 
         return Response({'error': 'Agency not found'}, status=status.HTTP_404_NOT_FOUND)
-    print(user)
     if user.email_verif == True:
         secret_key = settings.SECRET_KEY + user.id
         auth_s = URLSafeSerializer(secret_key, "auth")
@@ -368,7 +358,6 @@ def changeMPoublie(request):
     try : 
         user = Agency.objects.get(token=token)
     except :
-        print('Agence introuvable')
         return Response({'error': 'Agency not found'}, status=status.HTTP_408_REQUEST_TIMEOUT)
     try:
         #récupère l'id via la code donné et la validité du code
@@ -377,7 +366,6 @@ def changeMPoublie(request):
         data = auth_s.loads(token)
         token_id = data["id"] 
         valid_token = user.date_token + timedelta(minutes=5)
-        print(f' {user.id} == {token_id}')
         # vérifie l'id est bon et que le lien est toujours valide 
         if user.id == token_id and timezone.now() < valid_token: 
             #envoie et serializer et si données valide on enregistre
@@ -536,23 +524,21 @@ def getUpdateCommonTracKey(request, key_id):
         if key is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if key.available:
-            print('redirigé')
             return Response({'id_key': key.id},status=status.HTTP_307_TEMPORARY_REDIRECT)
         else: 
             tracks = key.trackcommon_set.all()
-            print(f'tracks:{tracks}')
+            count = 0
             for track in tracks:
-                print({track.retour})
+                count +=1
+                if count > 3:
+                    track.delete()
                 if track.retour is None:
                     track.retour = datetime.now().astimezone()
                     track.save()
                     key.available = True
                     key.save()
-                    print('available True')
-                    break
             return Response(status=status.HTTP_202_ACCEPTED)
     except CommonKey.DoesNotExist:
-        print('error')
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 
@@ -567,15 +553,16 @@ def getUpdatePrivateTracKey(request, key_id):
             return Response({'id_key': key.id},status=status.HTTP_307_TEMPORARY_REDIRECT)
         else: 
             tracks = key.trackprivate_set.all()
-            print({tracks})
+            count = 0
             for track in tracks:
-                print({track.retour})
+                count +=1
+                if count > 3:
+                    track.delete()
                 if track.retour is None:
                     track.retour = datetime.now().astimezone()
                     track.save()
                     key.available = True
                     key.save()
-                    break
             return Response(status=status.HTTP_202_ACCEPTED)
     except PrivateKey.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)

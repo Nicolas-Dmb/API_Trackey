@@ -75,7 +75,7 @@ class Copropriete(models.Model):
     
 class CommonKey(models.Model): 
     name = models.TextField()
-    acces = models.TextField()
+    acces = models.TextField(max_length=36)
     image = models.ImageField(upload_to = 'key_images/')
     qr_code = models.TextField(blank = True, null = True)
     available = models.BooleanField(default=True)
@@ -90,7 +90,7 @@ class CommonKey(models.Model):
 
 class PrivateKey(models.Model): 
     name = models.TextField()
-    acces = models.TextField()
+    acces = models.TextField(max_length=27)
     image = models.ImageField(upload_to = 'key_images/')
     qr_code = models.TextField(blank=True, null=True)
     available = models.BooleanField(default=True)
@@ -125,7 +125,7 @@ class TrackCommon(models.Model):
         return self.entreprise + '__/__' + str(self.id_key)
 
     class Meta: 
-        ordering = ['depart']
+        ordering = ['-depart']
 
 class TrackPrivate(models.Model):
     id_key = models.ForeignKey(PrivateKey, on_delete=models.CASCADE)
@@ -149,5 +149,5 @@ class TrackPrivate(models.Model):
         return self.entreprise + '__/__' + str(self.id_key)
     
     class Meta: 
-        ordering = ['depart']
+        ordering = ['-depart']
 
