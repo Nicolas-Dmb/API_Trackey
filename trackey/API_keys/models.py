@@ -62,7 +62,7 @@ class Agency(AbstractBaseUser):
 
 class Copropriete(models.Model):
     Numero = models.IntegerField()
-    name = models.TextField(max_length=20)
+    name = models.TextField(max_length=50)
     adresse = models.TextField()
     id_Agency = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
@@ -70,11 +70,11 @@ class Copropriete(models.Model):
         return str(self.Numero) + '__/__' + self.name + '__/__:' + str(self.id_Agency)
     
     class Meta:
-        ordering = ['id']
+        ordering = ['Numero']
 
     
 class CommonKey(models.Model): 
-    name = models.TextField()
+    name = models.IntegerField()
     acces = models.TextField(max_length=36)
     image = models.ImageField(upload_to = 'key_images/')
     qr_code = models.TextField(blank = True, null = True)

@@ -51,7 +51,7 @@ urlpatterns = [
     path('api/user/password', ChangePasswordView.as_view(), name='change_password'), 
     path('api/user/delete', DeleteAccountView.as_view(), name='delete_password'), 
     path('api/TrackC/update/<int:key_id>/', views.getUpdateCommonTracKey, name='track-update'),
-    path('api/TrackP/update/<int:key_id>/', views.getUpdatePrivateTracKey, name='track-update')
+    path('api/TrackP/update/<int:key_id>/', views.getUpdatePrivateTracKey, name='track-update'),
     ]
 
 
