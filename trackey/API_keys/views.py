@@ -13,7 +13,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 import pyotp
 from itsdangerous import URLSafeSerializer
-
+import pandas as pd
 
 @api_view(['GET'])
 def getRoutes(request):
@@ -246,6 +246,13 @@ def getRoutes(request):
             'body': None,
             'description': 'GET TrackPrivate',
         },
+        {
+            'Endpoint':'api/filecopro',
+            'method':'POST',
+            'body': 'file',
+            'description': 'Send many copropriete in one time',
+        },
+        
     ]
     return Response(routes)
 
@@ -638,4 +645,39 @@ def getUpdatePrivateTracKey(request, key_id):
             return Response(status=status.HTTP_202_ACCEPTED)
     except PrivateKey.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+    
+#Implémenter ses copros en masse
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def multicopro(request):
+    try:
+        agency_instance = Agency.objects.get(id=request.user.id)
+        uploaded_file = request.FILES['file']
+        fichier = pd.read_csv(uploaded_file, delimiter=';')
+        fichier.columns.values[:3]= ['Numero', 'Nom', 'Adresse']
+        errors = []
+        for index, row in fichier.iterrows():
+                if pd.isna(row['Numero']) or pd.isna(row['Adresse']) or pd.isna(row['Nom']): 
+                    errors.append(index+2)
+                    continue
+                try:
+                    if not Copropriete.objects.filter(Numero = int(row['Numero']),id_Agency =  agency_instance): 
+                        if not Copropriete.objects.filter(name = row['Nom'],id_Agency =  agency_instance): 
+                            Copropriete.objects.create (
+                                Numero= int(row['Numero']),
+                                name= row['Nom'],
+                                adresse= row['Adresse'],
+                                id_Agency =  agency_instance,
+                                )
+                        else : 
+                            errors.append(index+2)
+                    else : 
+                        errors.append(index+2)
+                except Exception as e:
+                    errors.append(index+2)
+        if len(errors)!=0 : 
+            return Response({f"Ces lignes n'ont pas pu être enregistrées : {errors} , Nom ou Numéro déjà utilisés ou informations manquantes"}, status=status.HTTP_206_PARTIAL_CONTENT)
+        return Response({"Fichier Excel traité avec succès."}, status=status.HTTP_200_OK)
+    except :
+        Response({"Une erreur s'est produite avec le fichier assurez-vous d'utiliser le model fourni"}, status=status.HTTP_400_BAD_REQUEST)
     

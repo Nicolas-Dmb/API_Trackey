@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django_pandas',
     
     "API_keys.apps.ApiKeysConfig", 
     "rest_framework",
