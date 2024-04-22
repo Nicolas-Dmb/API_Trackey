@@ -14,16 +14,15 @@ from pathlib import Path
 from datetime import timedelta
 from rest_framework import settings
 import os
+from decouple import config
+from storages.backends.s3boto3 import S3Boto3Storage
 from django.core.management.utils import get_random_secret_key
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Define the media root directory where uploaded files will be stored
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# Define the URL prefix to access media files
-MEDIA_URL = '/media/'
+# Spécifiez le chemin relatif vers le fichier .env en utilisant BASE_DIR
+env_file_path = os.path.join(BASE_DIR, '..', '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,7 +35,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = get_random_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -112,6 +111,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+SECURE_HSTS_SECONDS = 31536000 
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
 
 ROOT_URLCONF = "trackey.urls"
 
@@ -139,8 +142,12 @@ WSGI_APPLICATION = "trackey.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "mydatabase",
+        "USER": "mydatabaseuser",
+        "PASSWORD": "mypassword",
+        "HOST": "127.0.0.1",
+        "PORT": "5432",
     }
 }
 
@@ -196,14 +203,22 @@ AUTHENTICATION_BACKENDS = [
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "http://trackey.fr",
+    "http://localhost:3000"
 ]
 
-# Django Emails
+# Hostinger Emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.hostinger.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'securite@trackey.fr'
-EMAIL_HOST_PASSWORD = 'rGgK5#seXT@y7jQQMP4C'
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='', env_file=env_file_path)
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = 'securite@trackey.fr'
+
+# Amazon S3 pour Media 
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='', env_file=env_file_path)
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='', env_file=env_file_path)
+AWS_STORAGE_BUCKET_NAME = 'trackey'
+AWS_S3_REGION_NAME = 'eu-north-1'

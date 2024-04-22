@@ -72,11 +72,15 @@ class Copropriete(models.Model):
     class Meta:
         ordering = ['Numero']
 
-    
+def generate_unique_filename(instance, filename):
+    extension = filename.split('.')[-1]
+    new_filename = f"{uuid.uuid4()}.{extension}"
+    return f"{new_filename}"
+
 class CommonKey(models.Model): 
     name = models.IntegerField()
     acces = models.TextField(max_length=36)
-    image = models.ImageField(upload_to = 'key_images/')
+    image = models.ImageField(upload_to = generate_unique_filename)
     qr_code = models.TextField(blank = True, null = True)
     available = models.BooleanField(default=True)
     id_Agency = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -91,7 +95,7 @@ class CommonKey(models.Model):
 class PrivateKey(models.Model): 
     name = models.TextField()
     acces = models.TextField(max_length=27)
-    image = models.ImageField(upload_to = 'key_images/')
+    image = models.ImageField(upload_to = generate_unique_filename)
     qr_code = models.TextField(blank=True, null=True)
     available = models.BooleanField(default=True)
     id_Agency = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

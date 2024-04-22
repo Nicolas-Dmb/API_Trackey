@@ -1,3 +1,2 @@
-env
-/trackey/db.sqlite3
-/trackey/media/key_images
+env/
+.env
