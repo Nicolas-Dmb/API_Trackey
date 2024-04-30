@@ -24,7 +24,7 @@ import dj_database_url
 # .env en utilisant BASE_DIR
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 env_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'.env')  
-config = Config(RepositoryEnv(env_file_path))
+#config = Config(RepositoryEnv(env_file_path))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 #BASE_DIR = Path(__file__).resolve().parent.parent
