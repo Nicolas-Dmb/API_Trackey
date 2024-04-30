@@ -1,2 +1,4 @@
 release: python /app/trackey/manage.py collectstatic --noinput
-web: gunicorn trackey.wsgi --log-file -
+web: gunicorn trackey.trackey.wsgi --log-file -
+
+
