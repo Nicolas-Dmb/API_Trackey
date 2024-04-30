@@ -28,7 +28,7 @@ class CommonKeyListSerializer(ModelSerializer):
     
     def create(self, validated_data):
         instance = CommonKey.objects.create(**validated_data)
-        instance.qr_code = f'http://localhost:3000/Copropriete/CommonKey/track/{instance.id}/'
+        instance.qr_code = f'https://trackey.fr/Copropriete/CommonKey/track/{instance.id}/'
         instance.save()
         return instance
 
@@ -53,7 +53,7 @@ class PrivateKeyListSerializer(ModelSerializer):
     
     def create(self, validated_data):
         instance = PrivateKey.objects.create(**validated_data)
-        instance.qr_code = f'http://localhost:3000/Copropriete/PrivateKey/track/{instance.id}/'
+        instance.qr_code = f'https://trackey.fr/Copropriete/PrivateKey/track/{instance.id}/'
         instance.save()
         return instance
 
