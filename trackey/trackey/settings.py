@@ -34,7 +34,7 @@ env_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('mgk*z1@5ek#xf!u(+3tfh=j6-h4j3_sr#ka*!@)ru5a%$h%%i2')
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
