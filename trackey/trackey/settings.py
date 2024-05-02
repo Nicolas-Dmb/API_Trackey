@@ -150,7 +150,7 @@ WSGI_APPLICATION = "trackey.wsgi.application"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default=config('DATABASE_URL', default='postgres://USER:PASSWORD@HOST:PORT/NAME'))
+   'default': dj_database_url.config(default=config('DATABASE_URL', default='postgres://USER:PASSWORD@HOST:PORT/NAME'))
 }
 
 
