@@ -20,7 +20,7 @@ L'utilisateur n'utilise pas le modèle par défaut mais est configuré dans `mod
 Initialement, l'objectif était de structurer chaque organisation d'agence avec une agence, un manager et un utilisateur simple. Permettant à chaque membre de l'agence d'avoir son propre compte. Cependant, j'ai rencontré plusieurs difficultés pour comprendre le fonctionnement et la gestion des droits ainsi que le partage des données au sein de l'organisation. Par conséquent, j'ai décidé de simplifier mon code, avec un code pour tous les membres de l'agence. Toutefois j'ai voulu limiter l'accès à la modification des informations d'authentification et la suppression des données via un code OTP envoyé par mail. De cette façon, seule la personne ayant son e-mail de renseigné sur le compte peut effectuer ces actions.
 
 # Déploiement: 
-L'API est en ligne via cloud sur Heroku, la base de données est gérée par PostgreSQL, et les images de chaque clé envoyées par l'utilisateur sont stocké sur AWS. 
+L'API est en ligne via cloud sur Heroku, la base de données est gérée par PostgreSQL, et les images de chaque clé sont stockées sur AWS. 
 
 
 
