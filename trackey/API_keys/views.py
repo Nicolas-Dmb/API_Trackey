@@ -422,7 +422,7 @@ def sendMPoublie(request):
         send_mail(
                 'Bonjour,',
                 'Vous avez fait une demande de réinitialisation de votre mot de passe.'
-                f'Cliquez sur ce lien pour en définir un nouveau : http://localhost:3000/MotdePasseOublie/{token}',
+                f'Cliquez sur ce lien pour en définir un nouveau : https://trackey.fr/MotdePasseOublie/{token}',
                 'securite@trackey.fr',
                 [f'{user.email}'],
                 fail_silently=False,)
@@ -601,9 +601,18 @@ def getUpdateCommonTracKey(request, key_id):
     try:
         key = CommonKey.objects.filter(id=key_id, id_Agency=request.user.id).first()
         if key is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            #Clé introuvable on retourne les infos de l'agence proprio de la clé
+            key_Agency = CommonKey.objects.filter(id=key_id).first()
+            if key_Agency is None:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            Agence = key_Agency.id_Agency
+            if not hasattr(Agence, 'Name') or not hasattr(Agence, 'Adresse'):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({'Name':Agence.Name,'Adresse':Agence.Adresse},status=status.HTTP_404_NOT_FOUND)
         if key.available:
-            return Response({'id_key': key.id},status=status.HTTP_307_TEMPORARY_REDIRECT)
+            #clé disponible génération de form en front et on retourne la key
+            serializer = CommonKeySerializer(key)
+            return Response({'key': serializer.data},status=status.HTTP_307_TEMPORARY_REDIRECT)
         else: 
             tracks = key.trackcommon_set.all()
             count = 0
@@ -616,9 +625,11 @@ def getUpdateCommonTracKey(request, key_id):
                     track.save()
                     key.available = True
                     key.save()
-            return Response(status=status.HTTP_202_ACCEPTED)
-    except CommonKey.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+            #clé indisponible on enregistre le retour et on retourne la key
+            serializer = CommonKeySerializer(key)
+            return Response({'key': serializer.data},status=status.HTTP_202_ACCEPTED)
+    except Exception:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -627,9 +638,18 @@ def getUpdatePrivateTracKey(request, key_id):
     try:
         key = PrivateKey.objects.filter(id=key_id, id_Agency=request.user.id).first()
         if key is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            #Clé introuvable on retourne les infos de l'agence proprio de la clé
+            key_Agency = PrivateKey.objects.filter(id=key_id).first()
+            if key_Agency is None:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            Agence = key_Agency.id_Agency
+            if not hasattr(Agence, 'Name') or not hasattr(Agence, 'Adresse'):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({'Name':Agence.Name,'Adresse':Agence.Adresse},status=status.HTTP_404_NOT_FOUND)
         if key.available: 
-            return Response({'id_key': key.id},status=status.HTTP_307_TEMPORARY_REDIRECT)
+            #clé disponible génération de form en front et on retourne la key
+            serializer = PrivateKeySerializer(key)
+            return Response({'key': serializer.data},status=status.HTTP_307_TEMPORARY_REDIRECT)
         else: 
             tracks = key.trackprivate_set.all()
             count = 0
@@ -642,10 +662,43 @@ def getUpdatePrivateTracKey(request, key_id):
                     track.save()
                     key.available = True
                     key.save()
-            return Response(status=status.HTTP_202_ACCEPTED)
-    except PrivateKey.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    
+            #clé indisponible on enregistre le retour et on retourne la key
+            serializer = PrivateKeySerializer(key)
+            return Response({'key': serializer.data},status=status.HTTP_202_ACCEPTED)
+    except  Exception:
+        #Clé introuvable ou agence introuvable
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+#if user scan qrcode but not connect
+@api_view(['GET'])
+def getCommonKey(request, key_id):
+    try:
+        key_Agency = CommonKey.objects.filter(id=key_id).first()
+        if key_Agency is None:
+                return Response({'erreur': 'clé introuvable'},status=status.HTTP_400_BAD_REQUEST)
+        Agence = key_Agency.id_Agency
+        if not hasattr(Agence, 'Name') or not hasattr(Agence, 'Adresse'):
+                return Response({'erreur': 'Agence introuvable'},status=status.HTTP_400_BAD_REQUEST)
+        return Response({'Name':Agence.Name,'Adresse':Agence.Adresse},status=status.HTTP_202_ACCEPTED)
+    except Exception:
+        #Si on ne retrouve pas la clé ou l'agence alors on retourne une erreur 
+        return Response({'erreur': 'autre erreur'},status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def getPrivateKey(request, key_id):
+    try:
+        key_Agency = PrivateKey.objects.filter(id=key_id).first()
+        if key_Agency is None:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        Agence = key_Agency.id_Agency
+        if not hasattr(Agence, 'Name') or not hasattr(Agence, 'Adresse'):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response({'Name':Agence.Name,'Adresse':Agence.Adresse},status=status.HTTP_202_ACCEPTED)
+    except Exception:
+         #Si on ne retrouve pas la clé ou l'agence alors on retourne une erreur 
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
 #Implémenter ses copros en masse
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -680,4 +733,6 @@ def multicopro(request):
         return Response({"Fichier Excel traité avec succès."}, status=status.HTTP_200_OK)
     except :
         Response({"Une erreur s'est produite avec le fichier assurez-vous d'utiliser le model fourni"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
     
