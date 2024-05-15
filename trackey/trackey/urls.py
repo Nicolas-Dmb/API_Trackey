@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from API_keys import views
-from API_keys.views import CoproprieteViewset, CommonKeyViewset, PrivateKeyViewset, TrackCommonViewset, TrackPrivateViewset, AgencyUpdateView, AgencyCreateView, ChangePasswordView, getUpdateCommonTracKey, getUpdatePrivateTracKey, getAccount, SendOTPView, VerifyOTPView,  sendMPoublie, changeMPoublie, DeleteAccountView, multicopro
+from API_keys.views import CoproprieteViewset, CommonKeyViewset, PrivateKeyViewset, TrackCommonViewset, TrackPrivateViewset, AgencyUpdateView, AgencyCreateView, ChangePasswordView, getUpdateCommonTracKey, getUpdatePrivateTracKey, getAccount, SendOTPView, VerifyOTPView,  sendMPoublie, changeMPoublie, DeleteAccountView, multicopro, getCommonKey, getPrivateKey
 from rest_framework import routers
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
@@ -52,8 +52,11 @@ urlpatterns = [
     path('api/user/delete', DeleteAccountView.as_view(), name='delete_password'), 
     path('api/TrackC/update/<int:key_id>/', views.getUpdateCommonTracKey, name='track-update'),
     path('api/TrackP/update/<int:key_id>/', views.getUpdatePrivateTracKey, name='track-update'),
+    path('api/getCkey/<int:key_id>/', views.getCommonKey, name='Scan_Key_Unlog'),
+    path('api/getPkey/<int:key_id>/', views.getPrivateKey, name='Scan_Key_Unlog'),
     path('api/filecopro', views.multicopro, name='envoyer les copro en masse')
     ]
+
 
 
 
