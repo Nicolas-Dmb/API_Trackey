@@ -40,8 +40,12 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'apitrackey.fr',
     'https://apitrackey.fr',
+    'https://api-trackey.herokuapp.com',
+    'https://www.apitrackey.fr',
+    'apitrackey.fr',
+    'api-trackey.herokuapp.com',
+    'www.apitrackey.fr',
 ]
 
 
@@ -55,8 +59,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'django_pandas',
-    
-    "API_keys.apps.ApiKeysConfig", 
+
+    'API_keys.apps.ApiKeysConfig', 
     "rest_framework",
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -108,7 +112,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
 
     "corsheaders.middleware.CorsMiddleware",
-
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -194,6 +198,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 
+STATICFILES_FINDERS =[
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+] 
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -209,7 +218,12 @@ AUTHENTICATION_BACKENDS = [
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://trackey.fr",
+    "https://trackey.fr",
+    "https://www.trackey.fr",
+    'https://api-trackey.herokuapp.com',
+    'https://www.apitrackey.fr',
+    'exp://192.168.1.134:8081',
+    #'http://localhost:3000/'
 ]
 
 # Hostinger Emails
@@ -231,3 +245,19 @@ AWS_S3_REGION_NAME = 'eu-north-1'
 #Heroku
 import django_heroku
 django_heroku.settings(locals())
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',  # Change this to DEBUG for more detailed output
+        },
+    },
+}
